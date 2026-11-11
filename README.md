@@ -4,7 +4,7 @@
 
 用 Electron + React + TypeScript + Vite 开发，转换全部在你这台电脑上完成，不把文件交到云端。完整引擎只做桌面端；以后网页版会砍掉重功能，iOS 也会再单独做。
 
-当前版本 **0.1.1**。内部 npm 包名仍是 `mediaforge`，`appId` 是 `com.mediaforge.app`，预加载桥是 `window.mediaForge`。改产品名时不要随便改这些内部标识。
+当前版本 **0.1.2**。内部 npm 包名仍是 `mediaforge`，`appId` 是 `com.mediaforge.app`，预加载桥是 `window.mediaForge`。改产品名时不要随便改这些内部标识。
 
 > **不内置**网易云 NCM、QQ 音乐 mgg/mflac、酷狗 KGM 等加密音乐格式的解密。
 
@@ -364,7 +364,7 @@ npm run dist:win
 
 - 人声页导入后的专业波形与排版
 - 完善 RAW / CR3 的安装与冒烟脚本
-- 已完成：Windows 安装包内置全部转换引擎（见 v0.1.1）
+- 已完成：Windows 安装包内置全部转换引擎（见 v0.1.1）；v0.1.2 修复了 Poppler/qpdf 探测、灵灵显示和视频临时文件名
 - 可选的 UVR VR 架构、Demucs GPU / DirectML 探测
 - 轻量网页版（砍掉重引擎）与 iOS 版
 

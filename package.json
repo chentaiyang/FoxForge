@@ -1,7 +1,7 @@
 {
   "name": "mediaforge",
   "productName": "灵狐工坊",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "灵狐工坊 / FoxForge — Windows 全能格式转换客户端：Office / PDF / 音视频 / 人声分离",
   "main": "dist-electron/main.js",
   "author": "FoxForge",

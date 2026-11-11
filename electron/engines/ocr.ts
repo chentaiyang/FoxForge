@@ -5,11 +5,10 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { app } from 'electron'
 import { convertDocument } from './libreoffice'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { cancelledResult, failResult, isCancelRequested, preflightOutput, remapIfCancelled, spawnTracked, decorateProgress } from './jobs'
-import { envWithExeDir } from './bins'
+import { envWithExeDir, findBinary, missingBundledToolMessage } from './bins'
 
 export interface ConvertOcrRequest {
   inputPath: string
@@ -27,29 +26,6 @@ const IMAGE_EXTS = new Set([
   'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'webp', 'gif', 'ppm', 'pnm',
 ])
 const REQUIRED_LANGS = ['chi_sim', 'eng'] as const
-
-function candidateBinDirs(): string[] {
-  const dirs: string[] = []
-  const extra = [
-    path.join('bin', 'tesseract'),
-    path.join('bin', 'poppler'),
-    path.join('bin', 'poppler', 'bin'),
-    path.join('bin', 'poppler', 'Library', 'bin'),
-  ]
-  try {
-    if (app.isPackaged) {
-      dirs.push(path.join(process.resourcesPath, 'bin'))
-      for (const sub of extra) dirs.push(path.join(process.resourcesPath, sub))
-      dirs.push(path.join(path.dirname(process.execPath), 'resources', 'bin'))
-    }
-  } catch {
-    /* 不在 Electron 里 */
-  }
-  dirs.push(path.join(process.cwd(), 'bin'))
-  dirs.push(path.join(process.cwd(), 'resources', 'bin'))
-  for (const sub of extra) dirs.push(path.join(process.cwd(), 'resources', sub))
-  return dirs
-}
 
 function hasTrainedData(dir: string, lang = 'eng'): boolean {
   try {
@@ -113,48 +89,6 @@ function tessEnv(tesseractBin: string, extra?: NodeJS.ProcessEnv): NodeJS.Proces
   const prefix = resolveTessdataPrefix(tesseractBin)
   if (prefix) env.TESSDATA_PREFIX = prefix
   return env
-}
-
-function whichSync(cmd: string): string | null {
-  const pathEnv = process.env.PATH || ''
-  const sep = process.platform === 'win32' ? ';' : ':'
-  const exts =
-    process.platform === 'win32'
-      ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';')
-      : ['']
-  for (const dir of pathEnv.split(sep)) {
-    if (!dir) continue
-    for (const ext of exts) {
-      const full = path.join(dir, process.platform === 'win32' ? cmd + ext : cmd)
-      try {
-        if (fs.existsSync(full) && fs.statSync(full).isFile()) return full
-      } catch {
-        /* 忽略 */
-      }
-    }
-  }
-  return null
-}
-
-function findBinary(names: string[]): string | null {
-  const exts = process.platform === 'win32' ? ['.exe', ''] : ['']
-  for (const dir of candidateBinDirs()) {
-    for (const name of names) {
-      for (const ext of exts) {
-        const full = path.join(dir, name + ext)
-        try {
-          if (fs.existsSync(full) && fs.statSync(full).isFile()) return full
-        } catch {
-          /* 忽略 */
-        }
-      }
-    }
-  }
-  for (const name of names) {
-    const fromPath = whichSync(name)
-    if (fromPath) return fromPath
-  }
-  return null
 }
 
 function runCapture(
@@ -332,7 +266,7 @@ async function pdfToPngPages(
   if (!pdftoppm) {
     return {
       ok: false,
-      error: '扫描 PDF OCR 需要 pdftoppm（Poppler）。请安装 poppler-utils 或放入 resources/bin。',
+      error: missingBundledToolMessage('pdftoppm（Poppler，扫描 PDF OCR 需要）', 'bin/poppler', 'Linux 可 apt install poppler-utils。'),
     }
   }
   const prefix = path.join(tmpDir, 'page')

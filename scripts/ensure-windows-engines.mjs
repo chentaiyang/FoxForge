@@ -40,7 +40,7 @@ const popplerDir = path.join(binDir, 'poppler')
 const qpdfDir = path.join(binDir, 'qpdf-toolkit')
 const tesseractDir = path.join(binDir, 'tesseract')
 
-const UA = 'FoxForge-engine-bootstrap/0.1.1 (https://github.com/chentaiyang/FoxForge)'
+const UA = 'FoxForge-engine-bootstrap/0.1.2 (https://github.com/chentaiyang/FoxForge)'
 
 const PYTHON_CANDIDATES = ['3.12.10', '3.12.9', '3.12.8', '3.12.7', '3.11.13', '3.11.11']
 const PANDOC_VER = '3.13'
@@ -287,6 +287,72 @@ function copyTree(src, dest) {
   }
 }
 
+/**
+ * 官方 zip 常带一层版本目录（如 Release-26.09.0-0/ 或 qpdf-12.4.2-msvc64/）。
+ * 若 dest 下恰好只有这一层前缀目录，就把它的内容提升到 dest，去掉多余前缀。
+ * 已经是 bin/ 或 Library/ 这种目标布局则保持不变。可重复调用。
+ */
+export function hoistSingleTopDir(dest, keepNames = ['bin', 'Library', 'lib', 'share']) {
+  if (!dest || !fs.existsSync(dest)) return false
+  let entries
+  try {
+    entries = fs.readdirSync(dest).filter((n) => n !== '.' && n !== '..')
+  } catch {
+    return false
+  }
+  if (entries.length !== 1) return false
+  const onlyName = entries[0]
+  if (keepNames.some((k) => k.toLowerCase() === onlyName.toLowerCase())) return false
+  const only = path.join(dest, onlyName)
+  let st
+  try {
+    st = fs.statSync(only)
+  } catch {
+    return false
+  }
+  if (!st.isDirectory()) return false
+  const children = fs.readdirSync(only)
+  for (const child of children) {
+    const from = path.join(only, child)
+    const to = path.join(dest, child)
+    if (fs.existsSync(to)) {
+      const fromSt = fs.statSync(from)
+      const toSt = fs.statSync(to)
+      if (fromSt.isDirectory() && toSt.isDirectory()) {
+        copyTree(from, to)
+        fs.rmSync(from, { recursive: true, force: true })
+        continue
+      }
+      throw new Error(`提升目录时目标已存在：${to}`)
+    }
+    fs.renameSync(from, to)
+  }
+  fs.rmSync(only, { recursive: true, force: true })
+  return true
+}
+
+/**
+ * 反复去掉版本前缀，直到 pdftoppm.exe / qpdf.exe 落在已知布局：
+ *   poppler/Library/bin 或 poppler/bin
+ *   qpdf-toolkit/bin（依赖库可保留在 ../lib）
+ */
+export function normalizePackagedToolkit(dest, exeName, preferredRelDirs) {
+  if (!dest || !fs.existsSync(dest)) return null
+  // 最多提升几层，避免死循环
+  for (let i = 0; i < 4; i++) {
+    if (!hoistSingleTopDir(dest)) break
+  }
+  const exe = findFile(dest, (n) => n.toLowerCase() === exeName.toLowerCase())
+  if (!exe) return null
+  const relDir = path.relative(dest, path.dirname(exe))
+  const normalized = relDir.split(path.sep).join('/')
+  const preferred = preferredRelDirs.map((d) => d.split(/[\\/]/).join('/').replace(/\/$/, ''))
+  if (preferred.includes(normalized)) return exe
+  // 若仍嵌在意外路径，再尝试把 exe 所在目录的父级提升一次
+  hoistSingleTopDir(dest)
+  return findFile(dest, (n) => n.toLowerCase() === exeName.toLowerCase()) || exe
+}
+
 function withExeDir(bin) {
   const env = { ...process.env }
   env.PATH = path.dirname(bin) + path.delimiter + (env.PATH || '')
@@ -343,6 +409,9 @@ async function installFfmpeg() {
 }
 
 async function installPoppler() {
+  if (fs.existsSync(popplerDir)) {
+    normalizePackagedToolkit(popplerDir, 'pdftoppm.exe', ['Library/bin', 'bin'])
+  }
   const exe = findFile(popplerDir, (n) => n.toLowerCase() === 'pdftoppm.exe')
   const txt = findFile(popplerDir, (n) => n.toLowerCase() === 'pdftotext.exe')
   if (exe && txt && already(exe, ['-v'], () => true)) {
@@ -366,12 +435,22 @@ async function installPoppler() {
   if (fs.existsSync(popplerDir)) fs.rmSync(popplerDir, { recursive: true, force: true })
   mkdir(popplerDir)
   extractZip(zip, popplerDir)
-  const got = findFile(popplerDir, (n) => n.toLowerCase() === 'pdftoppm.exe')
+  const got = normalizePackagedToolkit(popplerDir, 'pdftoppm.exe', ['Library/bin', 'bin'])
   if (!got) throw new Error('Poppler zip 里没有 pdftoppm.exe')
+  const rel = path.relative(popplerDir, path.dirname(got)).split(path.sep).join('/')
+  if (rel !== 'Library/bin' && rel !== 'bin') {
+    log('WARN poppler 布局仍含额外层级', rel, got)
+  }
+  if (!findFile(popplerDir, (n) => n.toLowerCase() === 'pdftotext.exe')) {
+    throw new Error('Poppler zip 里没有 pdftotext.exe')
+  }
   log('OK poppler', got)
 }
 
 async function installQpdf() {
+  if (fs.existsSync(qpdfDir)) {
+    normalizePackagedToolkit(qpdfDir, 'qpdf.exe', ['bin', ''])
+  }
   const existing = findFile(qpdfDir, (n) => n.toLowerCase() === 'qpdf.exe') || path.join(binDir, 'qpdf.exe')
   if (existsFile(existing) && already(existing, ['--version'], (_r, t) => /qpdf/i.test(t))) {
     log('OK qpdf already present', existing)
@@ -393,8 +472,12 @@ async function installQpdf() {
   if (fs.existsSync(qpdfDir)) fs.rmSync(qpdfDir, { recursive: true, force: true })
   mkdir(qpdfDir)
   extractZip(zip, qpdfDir)
-  const got = findFile(qpdfDir, (n) => n.toLowerCase() === 'qpdf.exe')
+  const got = normalizePackagedToolkit(qpdfDir, 'qpdf.exe', ['bin', ''])
   if (!got) throw new Error('qpdf zip 里没有 qpdf.exe')
+  const rel = path.relative(qpdfDir, path.dirname(got)).split(path.sep).join('/')
+  if (rel !== 'bin' && rel !== '') {
+    log('WARN qpdf 布局仍含额外层级', rel, got)
+  }
   log('OK qpdf', got)
 }
 
@@ -842,7 +925,11 @@ async function main() {
   verifyAll()
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+// 被其它脚本 import 时不要自动跑安装流程
+const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isDirectRun) {
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+}

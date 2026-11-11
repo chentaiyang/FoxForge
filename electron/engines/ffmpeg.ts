@@ -176,6 +176,37 @@ export function isFfmpegConvertible(group: string, target: string): boolean {
   return false
 }
 
+/**
+ * 按最终目标格式选择 FFmpeg muxer。必须根据真正的输出扩展名/目标来推导，
+ * 而不是临时文件名（历史上曾写成 .mov.part，FFmpeg 无法识别）。
+ */
+export function ffmpegMuxerForTarget(target: string): string | null {
+  const t = target.toLowerCase().replace(/^\./, '')
+  const map: Record<string, string> = {
+    mp4: 'mp4',
+    mov: 'mov',
+    mkv: 'matroska',
+    webm: 'webm',
+    gif: 'gif',
+    mp3: 'mp3',
+    wav: 'wav',
+    flac: 'flac',
+    aac: 'adts',
+    m4a: 'ipod',
+    ogg: 'ogg',
+    opus: 'opus',
+    wma: 'asf',
+  }
+  return map[t] ?? null
+}
+
+/** 在输出路径前插入 -f muxer（若能识别目标格式）。 */
+export function withFfmpegOutputFormat(args: string[], target: string, outputPath: string): string[] {
+  const muxer = ffmpegMuxerForTarget(target)
+  if (muxer) return [...args, '-f', muxer, outputPath]
+  return [...args, outputPath]
+}
+
 export function buildFfmpegArgs(
   inputPath: string,
   outputPath: string,
@@ -211,19 +242,19 @@ export function buildFfmpegArgs(
         audio.push('-c:a', 'wmav2', '-b:a', '192k')
         break
     }
-    return [...base, ...audio, outputPath]
+    return withFfmpegOutputFormat([...base, ...audio], t, outputPath)
   }
 
   if (t === 'gif') {
-    return [...base, '-vf', 'fps=12,scale=480:-1:flags=lanczos', '-loop', '0', outputPath]
+    return withFfmpegOutputFormat([...base, '-vf', 'fps=12,scale=480:-1:flags=lanczos', '-loop', '0'], t, outputPath)
   }
 
   if (t === 'webm') {
     if (videoCodec === 'copy') {
-      return [...base, '-c', 'copy', outputPath]
+      return withFfmpegOutputFormat([...base, '-c', 'copy'], t, outputPath)
     }
     if (videoCodec === 'av1') {
-      return [
+      return withFfmpegOutputFormat([
         ...base,
         '-c:v',
         'libsvtav1',
@@ -235,10 +266,9 @@ export function buildFfmpegArgs(
         'libopus',
         '-b:a',
         '128k',
-        outputPath,
-      ]
+      ], t, outputPath)
     }
-    return [
+    return withFfmpegOutputFormat([
       ...base,
       '-c:v',
       'libvpx-vp9',
@@ -250,8 +280,7 @@ export function buildFfmpegArgs(
       'libopus',
       '-b:a',
       '128k',
-      outputPath,
-    ]
+    ], t, outputPath)
   }
 
   const vcodec =
@@ -266,7 +295,7 @@ export function buildFfmpegArgs(
   const acodec = videoCodec === 'copy' ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '192k']
   const extra = t === 'mp4' || t === 'mov' ? ['-movflags', '+faststart'] : []
 
-  return [...base, ...vcodec, ...acodec, ...extra, outputPath]
+  return withFfmpegOutputFormat([...base, ...vcodec, ...acodec, ...extra], t, outputPath)
 }
 
 export function defaultOutputPath(inputPath: string, target: string): string {

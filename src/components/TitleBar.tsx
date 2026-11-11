@@ -9,7 +9,7 @@ export default function TitleBar() {
   return (
     <header className="title-bar" data-tauri-drag-region>
       <div className="title-bar-brand">
-        <img className="brand-mark" src="/mascot-bust.png" alt="灵灵" />
+        <img className="brand-mark" src="./mascot-bust.png" alt="灵灵" />
         <div>
           <div className="brand-name">灵狐工坊</div>
           <div className="brand-sub">FoxForge · v0.1.1</div>

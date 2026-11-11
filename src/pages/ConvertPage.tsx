@@ -1147,7 +1147,7 @@ export default function ConvertPage() {
             </button>
             {/* 空队列展示灵灵全身；有文件后改回向上箭头。点击框选文件，右上角胶囊选文件夹。 */}
             {queue.length === 0 ? (
-              <img className="dropzone-mascot" src="/mascot-full.png" alt="灵灵" />
+              <img className="dropzone-mascot" src="./mascot-full.png" alt="灵灵" />
             ) : (
               <div className="dropzone-icon">↑</div>
             )}

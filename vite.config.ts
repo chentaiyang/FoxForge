@@ -11,6 +11,9 @@ import electron from 'vite-plugin-electron/simple'
 import path from 'node:path'
 
 export default defineConfig({
+  // 生产环境用 loadFile 打开 dist/index.html，根路径 /mascot-*.png 会变成 file:///mascot-*.png。
+  // 相对 base 才能让 public 资源和打包后的 JS/CSS 在安装包里正确加载。
+  base: './',
   plugins: [
     react(),
     electron({

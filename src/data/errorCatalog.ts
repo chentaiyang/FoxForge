@@ -42,12 +42,12 @@ export const ERROR_CATALOG: Record<string, ErrorCatalogEntry> = {
   'E-PDF-POPPLER': {
     code: 'E-PDF-POPPLER',
     reason: '未检测到 Poppler（pdftoppm / pdftotext）',
-    hint: '请安装 poppler-utils，或放入 resources/bin。',
+    hint: '正式安装包应已将 Poppler 放在安装目录的 resources/bin/poppler 下；若仍缺失，通常是打包问题。',
   },
   'E-PDF-QPDF': {
     code: 'E-PDF-QPDF',
     reason: '未检测到 qpdf，或 qpdf 处理失败',
-    hint: '加密/解密需要 qpdf。请安装并加入 PATH，或放入 resources/bin。',
+    hint: '加密/解密需要 qpdf。正式安装包应已将其放在安装目录的 resources/bin/qpdf-toolkit 下；若仍缺失，通常是打包问题。',
   },
   'E-PDF-FAILED': {
     code: 'E-PDF-FAILED',

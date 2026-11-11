@@ -5,14 +5,13 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { app } from 'electron'
 import { PDFDocument } from 'pdf-lib'
 import { convertDocument } from './libreoffice'
 import { rasterToWebp } from './image'
 import { convertOcr } from './ocr'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { atomicWriteOutput, cancelledResult, failResult, isCancelRequested, preflightOutput, remapIfCancelled, setPhase, spawnTracked, decorateProgress } from './jobs'
-import { envWithExeDir } from './bins'
+import { envWithExeDir, findBinary, missingBundledToolMessage } from './bins'
 
 export type PdfAction = 'convert' | 'split' | 'merge' | 'encrypt' | 'decrypt' | 'ocr'
 
@@ -33,73 +32,6 @@ export interface ConvertPdfRequest {
 const IMAGE_TARGETS = new Set(['png', 'jpg', 'jpeg'])
 const LO_PDF_TARGETS = new Set(['docx', 'odt', 'rtf', 'html', 'xlsx', 'xls', 'ods', 'pptx', 'odp', 'txt'])
 // 也可以经 LibreOffice 出 txt，但纯文本抽取更推荐更快更保真的 pdftotext
-
-function candidateBinDirs(): string[] {
-  const dirs: string[] = []
-  // Poppler 的 Windows 包（conda/oschwartz 布局）在 poppler/Library/bin，不要和 qpdf 的 DLL 混放
-  const extra = [
-    path.join('bin', 'poppler'),
-    path.join('bin', 'poppler', 'bin'),
-    path.join('bin', 'poppler', 'Library', 'bin'),
-    path.join('bin', 'qpdf-toolkit', 'bin'),
-    path.join('bin', 'qpdf-toolkit'),
-  ]
-  try {
-    if (app.isPackaged) {
-      dirs.push(path.join(process.resourcesPath, 'bin'))
-      for (const sub of extra) dirs.push(path.join(process.resourcesPath, sub))
-      dirs.push(path.join(path.dirname(process.execPath), 'resources', 'bin'))
-    }
-  } catch {
-    /* app may be unavailable outside Electron */
-  }
-  dirs.push(path.join(process.cwd(), 'bin'))
-  dirs.push(path.join(process.cwd(), 'resources', 'bin'))
-  for (const sub of extra) dirs.push(path.join(process.cwd(), 'resources', sub))
-  return dirs
-}
-
-function whichSync(cmd: string): string | null {
-  const pathEnv = process.env.PATH || ''
-  const sep = process.platform === 'win32' ? ';' : ':'
-  const exts =
-    process.platform === 'win32'
-      ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';')
-      : ['']
-  for (const dir of pathEnv.split(sep)) {
-    if (!dir) continue
-    for (const ext of exts) {
-      const full = path.join(dir, process.platform === 'win32' ? cmd + ext : cmd)
-      try {
-        if (fs.existsSync(full) && fs.statSync(full).isFile()) return full
-      } catch {
-        /* 忽略 */
-      }
-    }
-  }
-  return null
-}
-
-function findBinary(names: string[]): string | null {
-  const exts = process.platform === 'win32' ? ['.exe', ''] : ['']
-  for (const dir of candidateBinDirs()) {
-    for (const name of names) {
-      for (const ext of exts) {
-        const full = path.join(dir, name + ext)
-        try {
-          if (fs.existsSync(full) && fs.statSync(full).isFile()) return full
-        } catch {
-          /* 忽略 */
-        }
-      }
-    }
-  }
-  for (const name of names) {
-    const fromPath = whichSync(name)
-    if (fromPath) return fromPath
-  }
-  return null
-}
 
 function runCapture(
   bin: string,
@@ -236,7 +168,11 @@ export async function getPopplerHealthItem(): Promise<EngineHealthItem> {
     path: pdftoppm ?? undefined,
     detail: ready
       ? `pdftoppm + pdftotext OK；合并/拆分页用 pdf-lib`
-      : `缺少 ${[!pdftoppm && 'pdftoppm', !pdftotext && 'pdftotext'].filter(Boolean).join(' / ')}。Linux: apt install poppler-utils；或放入 resources/bin`,
+      : missingBundledToolMessage(
+          `${[!pdftoppm && 'pdftoppm', !pdftotext && 'pdftotext'].filter(Boolean).join(' / ')}（Poppler）`,
+          'bin/poppler',
+          'Linux 可 apt install poppler-utils。',
+        ),
   }
 }
 
@@ -259,8 +195,7 @@ export async function getQpdfHealthItem(): Promise<EngineHealthItem> {
     name: 'qpdf',
     status: 'missing',
     covers: 'PDF 加密 / 解密',
-    detail:
-      '未找到 qpdf。Linux: apt install qpdf，或 node scripts/ensure-pdf-tools.mjs；也可放入 resources/bin/qpdf-toolkit',
+    detail: missingBundledToolMessage('qpdf', 'bin/qpdf-toolkit', 'Linux 可 apt install qpdf，或运行 node scripts/ensure-pdf-tools.mjs。'),
   }
 }
 
@@ -277,7 +212,7 @@ async function pdfToImages(
     return {
       jobId,
       ok: false,
-      error: '未找到 pdftoppm（Poppler）。请安装 poppler-utils 或放入 resources/bin。',
+      error: missingBundledToolMessage('pdftoppm（Poppler）', 'bin/poppler', 'Linux 可 apt install poppler-utils。'),
     }
   }
 
@@ -341,7 +276,7 @@ async function pdfToText(
     return {
       jobId,
       ok: false,
-      error: '未找到 pdftotext（Poppler）。请安装 poppler-utils 或放入 resources/bin。',
+      error: missingBundledToolMessage('pdftotext（Poppler）', 'bin/poppler', 'Linux 可 apt install poppler-utils。'),
     }
   }
   const out = outputPath || defaultOutputPath(inputPath, 'txt')
@@ -468,7 +403,7 @@ async function encryptPdf(
       jobId,
       ok: false,
       error:
-        '未找到 qpdf，无法加密。请 apt install qpdf，或运行 node scripts/ensure-pdf-tools.mjs。',
+        missingBundledToolMessage('qpdf，无法加密', 'bin/qpdf-toolkit', 'Linux 可 apt install qpdf，或运行 node scripts/ensure-pdf-tools.mjs。'),
     }
   }
   const out = outputPath || defaultOutputPath(inputPath, 'pdf').replace(/\.pdf$/i, '_encrypted.pdf')
@@ -516,7 +451,7 @@ async function decryptPdf(
       jobId,
       ok: false,
       error:
-        '未找到 qpdf，无法解密。请 apt install qpdf，或运行 node scripts/ensure-pdf-tools.mjs。',
+        missingBundledToolMessage('qpdf，无法解密', 'bin/qpdf-toolkit', 'Linux 可 apt install qpdf，或运行 node scripts/ensure-pdf-tools.mjs。'),
     }
   }
   const out = outputPath || defaultOutputPath(inputPath, 'pdf').replace(/\.pdf$/i, '_decrypted.pdf')

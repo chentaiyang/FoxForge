@@ -24,6 +24,9 @@ function requireElectron(): { app?: { isPackaged?: boolean } } | null {
 /**
  * 安装包里引擎的常见子目录。LibreOffice / Poppler / qpdf / Calibre 不会全部平铺在 bin/，
  * 避免不同工具包的 DLL 重名互相覆盖。
+ *
+ * Poppler / qpdf 的官方 zip 常带一层版本目录，除下列常见路径外，findBinary
+ * 还会在 RECURSIVE_PACKAGED_ROOTS 下按文件名再向下找几层。
  */
 export const PACKAGED_ENGINE_SUBDIRS = [
   path.join('bin', 'poppler'),
@@ -113,26 +116,116 @@ export function whichSync(cmd: string): string | null {
   return null
 }
 
-/** 先在 candidateBinDirs 里找，找不到再查 PATH。 */
+/**
+ * 只在这些打包根目录下按文件名向下再找几层。
+ * 官方 Poppler / qpdf zip 常多一层版本目录（如 Release-26.09.0-0/Library/bin），
+ * 不要把递归范围扩大到整个磁盘或整个 resources。
+ */
+export const RECURSIVE_PACKAGED_ROOTS = [
+  path.join('bin', 'poppler'),
+  path.join('bin', 'qpdf-toolkit'),
+]
+
+const RECURSIVE_PACKAGED_MAX_DEPTH = 6
+
+function packagedRecursiveRoots(): string[] {
+  const roots: string[] = []
+  const push = (p: string) => {
+    if (p && !roots.includes(p)) roots.push(p)
+  }
+  try {
+    const el = requireElectron()
+    if (el?.app?.isPackaged) {
+      for (const sub of RECURSIVE_PACKAGED_ROOTS) {
+        push(path.join(process.resourcesPath, sub))
+        push(path.join(path.dirname(process.execPath), 'resources', sub))
+      }
+    }
+  } catch {
+    /* 不在 Electron 里 */
+  }
+  for (const sub of RECURSIVE_PACKAGED_ROOTS) {
+    push(path.join(process.cwd(), 'resources', sub))
+    push(path.join(process.cwd(), sub))
+  }
+  return roots
+}
+
+function isFile(p: string): boolean {
+  try {
+    return fs.existsSync(p) && fs.statSync(p).isFile()
+  } catch {
+    return false
+  }
+}
+
+/** 在 root 下按文件名递归查找，深度有限。 */
+export function findNamedFileUnder(root: string, names: string[], maxDepth = RECURSIVE_PACKAGED_MAX_DEPTH): string | null {
+  const exts = process.platform === 'win32' ? ['.exe', ''] : ['']
+  const walk = (dir: string, depth: number): string | null => {
+    if (!dir || depth < 0) return null
+    let st: fs.Stats
+    try {
+      st = fs.statSync(dir)
+    } catch {
+      return null
+    }
+    if (!st.isDirectory()) return null
+    for (const name of names) {
+      for (const ext of exts) {
+        const full = path.join(dir, name + ext)
+        if (isFile(full)) return full
+      }
+    }
+    if (depth === 0) return null
+    let entries: string[] = []
+    try {
+      entries = fs.readdirSync(dir)
+    } catch {
+      return null
+    }
+    for (const name of entries) {
+      const found = walk(path.join(dir, name), depth - 1)
+      if (found) return found
+    }
+    return null
+  }
+  return walk(root, maxDepth)
+}
+
+/** 先在 candidateBinDirs 里找；再在打包的 poppler / qpdf 树下递归按文件名找；最后查 PATH。 */
 export function findBinary(names: string[], extraSubdirs: string[] = []): string | null {
   const exts = process.platform === 'win32' ? ['.exe', ''] : ['']
   for (const dir of candidateBinDirs(extraSubdirs)) {
     for (const name of names) {
       for (const ext of exts) {
         const full = path.join(dir, name + ext)
-        try {
-          if (fs.existsSync(full) && fs.statSync(full).isFile()) return full
-        } catch {
-          /* 忽略 */
-        }
+        if (isFile(full)) return full
       }
     }
+  }
+  for (const root of packagedRecursiveRoots()) {
+    const found = findNamedFileUnder(root, names)
+    if (found) return found
   }
   for (const name of names) {
     const fromPath = whichSync(name)
     if (fromPath) return fromPath
   }
   return null
+}
+
+/**
+ * 「未找到已打包引擎」的提示：Windows（尤其是安装包）不要把 apt 放在最前面，
+ * 应说明工具本该在安装目录的 resources/bin/... 下，缺失通常是打包问题。
+ */
+export function missingBundledToolMessage(tool: string, packagedSubdir: string, linuxHint?: string): string {
+  const where = `安装目录的 resources/${packagedSubdir.replace(/\\/g, '/')}`
+  if (process.platform === 'win32') {
+    return `未找到 ${tool}。正式安装包应已将其放在 ${where} 下；若仍缺失，通常是打包问题。`
+  }
+  const extra = linuxHint ? ` ${linuxHint}` : ''
+  return `未找到 ${tool}。请将其放入 resources/${packagedSubdir.replace(/\\/g, '/')}，或从系统包管理器安装。${extra}`.trim()
 }
 
 /** 运行外部命令并捕获 stdout/stderr，超时则 SIGKILL。 */

@@ -692,8 +692,24 @@ export function truncateFile(filePath: string, size: number) {
   }
 }
 
+/**
+ * 在最终输出旁生成临时路径，但保留真实扩展名，避免 FFmpeg 等引擎无法从
+ * `.mov.part` 推断封装格式。例如 video.mov → video.part.mov；无扩展名则
+ * 退回 name.part。spacePath 仍使用 `${tempPath}.space`，不会和临时文件撞名。
+ */
 export function siblingTempPath(outputPath: string, suffix = '.part'): string {
-  return `${outputPath}${suffix}`
+  const dir = path.dirname(outputPath)
+  const ext = path.extname(outputPath)
+  const base = path.basename(outputPath, ext)
+  const marker = suffix.startsWith('.') ? suffix.slice(1) : suffix
+  if (!base) {
+    // 类似 ".mov" 这种只有扩展名的文件名，退回附加后缀
+    return `${outputPath}.${marker}`
+  }
+  if (!ext) {
+    return path.join(dir, `${base}.${marker}`)
+  }
+  return path.join(dir, `${base}.${marker}${ext}`)
 }
 
 export function verifyOutputFile(filePath: string, kind: 'file' | 'zip' = 'file'): boolean {

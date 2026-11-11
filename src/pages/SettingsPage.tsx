@@ -196,7 +196,7 @@ export default function SettingsPage() {
         <div className="settings-group">
           <h3>关于</h3>
           <div className="about-card">
-            <img className="about-mascot" src="/mascot-bust.png" alt="灵灵" />
+            <img className="about-mascot" src="./mascot-bust.png" alt="灵灵" />
             <div className="about-card-copy">
               <strong>灵狐工坊 FoxForge</strong>
               <p>版本 0.1.1 · Electron + React + TypeScript</p>
