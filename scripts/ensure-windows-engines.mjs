@@ -480,8 +480,21 @@ async function installTesseract() {
     const names = [...html.matchAll(/tesseract-ocr-w64-setup-(?:v)?5[\w.-]+\.exe/gi)]
       .map((m) => m[0])
       .filter((n) => !/alpha|beta|rc|dev/i.test(n))
-    names.sort()
-    if (names.length) installerName = names[names.length - 1]
+    const scored = names.map((n) => {
+      const m = n.match(/setup-v?(\d+(?:\.\d+)*)(?:\.(\d+))?/i)
+      const ver = m ? m[1].split('.').map((x) => Number(x) || 0) : [0]
+      const date = m && m[2] ? Number(m[2]) : 0
+      return { n, ver, date }
+    })
+    scored.sort((a, b) => {
+      const len = Math.max(a.ver.length, b.ver.length)
+      for (let i = 0; i < len; i += 1) {
+        const d = (a.ver[i] || 0) - (b.ver[i] || 0)
+        if (d) return d
+      }
+      return a.date - b.date
+    })
+    if (scored.length) installerName = scored[scored.length - 1].n
   } catch (e) {
     log('tesseract directory listing failed, using pinned installer', e.message || e)
   }
@@ -674,6 +687,9 @@ async function installPythonEnv() {
   if ((pip.status ?? 1) !== 0) throw new Error(`pip 升级失败：${pip.stderr || pip.stdout}`)
   pip = runBin(py, ['-m', 'pip', 'install', 'torch', '--index-url', 'https://download.pytorch.org/whl/cpu'], 30 * 60 * 1000)
   if ((pip.status ?? 1) !== 0) throw new Error(`安装 torch CPU 失败：${pip.stderr || pip.stdout}`)
+  // audioop-lts 只给 Python 3.13+（标准库移除了 audioop）；3.12 自带该模块，强行安装会失败
+  const verOut = runBin(py, ['-c', 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'])
+  const pyVer = (verOut.stdout || '').trim()
   const pkgs = [
     'demucs',
     'numpy',
@@ -694,8 +710,10 @@ async function installPythonEnv() {
     'resampy',
     'six',
     'packaging',
-    'audioop-lts',
   ]
+  const minor = Number((pyVer.split('.')[1] || '0'))
+  const major = Number((pyVer.split('.')[0] || '0'))
+  if (major > 3 || (major === 3 && minor >= 13)) pkgs.push('audioop-lts')
   pip = runBin(py, ['-m', 'pip', 'install', ...pkgs], 30 * 60 * 1000)
   if ((pip.status ?? 1) !== 0) throw new Error(`安装 demucs/UVR 依赖失败：${pip.stderr || pip.stdout}`)
   const check = runBin(py, ['-c', probe], 180000)
