@@ -6,7 +6,6 @@
 
 当前版本 **0.1.0**。内部 npm 包名仍是 `mediaforge`，`appId` 是 `com.mediaforge.app`，预加载桥是 `window.mediaForge`。改产品名时不要随便改这些内部标识。
 
-> 功能上对标 [飞鼠格式 FlyingMouse Format](https://github.com/LaoFeng-mouse/flyingmouse-format)，但**不使用**飞鼠的形象、品牌或专有文案。  
 > **不内置**网易云 NCM、QQ 音乐 mgg/mflac、酷狗 KGM 等加密音乐格式的解密。
 
 ---
@@ -19,7 +18,6 @@
 - [环境要求](#环境要求)
 - [命令一览](#命令一览)
 - [引擎总表](#引擎总表)
-- [与飞鼠对比](#与飞鼠对比)
 - [目录结构](#目录结构)
 - [打包](#打包)
 - [合法使用](#合法使用)
@@ -297,24 +295,6 @@ MEDIAFORGE_SMOKE_DEMUCS=1 npm run smoke:vocal   # 真跑 Demucs，会下载权�
 | UVR · VR Architecture | 未接入 | 选中时会明确说明 |
 | 字幕 / 压缩包 | 已接入 | 见对应引擎文件 |
 | 特殊音乐模块 | 永远可选，不就绪 | 需外部合法工具；应用内不破解。会计入引擎总数分母 |
-
----
-
-## 与飞鼠对比
-
-| 维度 | 飞鼠格式 | 灵狐工坊 |
-|------|----------|----------|
-| 音视频 | 有 | 有，FFmpeg |
-| Office | 有 | 有，LibreOffice |
-| PDF 渲染 / 拆合 / 加密 | 有 | 有，Poppler + pdf-lib + qpdf |
-| 图片 | 有 | 有，Sharp + FFmpeg + LibRaw |
-| OCR | 有 | 有，Tesseract |
-| 电子书 | 部分 | Pandoc + LibreOffice，MOBI / AZW 视 Calibre |
-| 人声分离 | 无 | Demucs + UVR MDX-Net + FFmpeg 降级 |
-| 特殊加密音乐 | 无 | 不内置破解 |
-| 主题 / 可关高级渲染 | 无此类 | 有 |
-| 任务队列、预占磁盘、暂停取消 | — | 有 |
-| 网页 / iOS | 无 | 路线图；网页会砍重功能 |
 
 ---
 
