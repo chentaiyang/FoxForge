@@ -18,6 +18,7 @@ import {
 import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
+import { envWithExeDir } from './bins'
 import { getLibreOfficeHealthItem } from './libreoffice'
 import { getPopplerHealthItem, getQpdfHealthItem } from './pdf'
 import { getSharpHealthItem, getLibrawHealthItem } from './image'
@@ -110,7 +111,7 @@ function runCapture(
   timeoutMs = 15000,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawnTracked(bin, args, { windowsHide: true })
+    const child = spawnTracked(bin, args, { windowsHide: true, env: envWithExeDir(bin) })
     let stdout = ''
     let stderr = ''
     const timer = setTimeout(() => {
@@ -374,7 +375,7 @@ export async function convertMedia(
   onProgress({ jobId, percent: 1, durationSec: durationSec ?? undefined, message: '开始转换…', phase: 'convert' })
 
   const result = await new Promise<ConvertResult>((resolve) => {
-    const child = spawnTracked(ffmpeg, args, { windowsHide: true })
+    const child = spawnTracked(ffmpeg, args, { windowsHide: true, env: envWithExeDir(ffmpeg) })
     let stderrBuf = ''
 
     const handleChunk = (chunk: Buffer) => {

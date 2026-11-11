@@ -12,6 +12,7 @@ import { rasterToWebp } from './image'
 import { convertOcr } from './ocr'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { atomicWriteOutput, cancelledResult, failResult, isCancelRequested, preflightOutput, remapIfCancelled, setPhase, spawnTracked, decorateProgress } from './jobs'
+import { envWithExeDir } from './bins'
 
 export type PdfAction = 'convert' | 'split' | 'merge' | 'encrypt' | 'decrypt' | 'ocr'
 
@@ -35,10 +36,18 @@ const LO_PDF_TARGETS = new Set(['docx', 'odt', 'rtf', 'html', 'xlsx', 'xls', 'od
 
 function candidateBinDirs(): string[] {
   const dirs: string[] = []
+  // Poppler 的 Windows 包（conda/oschwartz 布局）在 poppler/Library/bin，不要和 qpdf 的 DLL 混放
+  const extra = [
+    path.join('bin', 'poppler'),
+    path.join('bin', 'poppler', 'bin'),
+    path.join('bin', 'poppler', 'Library', 'bin'),
+    path.join('bin', 'qpdf-toolkit', 'bin'),
+    path.join('bin', 'qpdf-toolkit'),
+  ]
   try {
     if (app.isPackaged) {
       dirs.push(path.join(process.resourcesPath, 'bin'))
-      dirs.push(path.join(process.resourcesPath, 'bin', 'qpdf-toolkit', 'bin'))
+      for (const sub of extra) dirs.push(path.join(process.resourcesPath, sub))
       dirs.push(path.join(path.dirname(process.execPath), 'resources', 'bin'))
     }
   } catch {
@@ -46,7 +55,7 @@ function candidateBinDirs(): string[] {
   }
   dirs.push(path.join(process.cwd(), 'bin'))
   dirs.push(path.join(process.cwd(), 'resources', 'bin'))
-  dirs.push(path.join(process.cwd(), 'resources', 'bin', 'qpdf-toolkit', 'bin'))
+  for (const sub of extra) dirs.push(path.join(process.cwd(), 'resources', sub))
   return dirs
 }
 
@@ -100,7 +109,7 @@ function runCapture(
   return new Promise((resolve) => {
     const child = spawnTracked(bin, args, {
       windowsHide: true,
-      env: opts?.env ?? process.env,
+      env: envWithExeDir(bin, opts?.env ?? process.env),
     })
     let stdout = ''
     let stderr = ''
@@ -126,7 +135,7 @@ function runCapture(
 }
 
 function qpdfEnv(qpdfPath: string): NodeJS.ProcessEnv {
-  const env = { ...process.env }
+  const env = envWithExeDir(qpdfPath)
   // 便携工具包：.../qpdf-toolkit/bin/qpdf，依赖库在 ../lib
   const libDir = path.join(path.dirname(qpdfPath), '..', 'lib')
   if (fs.existsSync(libDir)) {

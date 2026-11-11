@@ -4,7 +4,7 @@
 
 用 Electron + React + TypeScript + Vite 开发，转换全部在你这台电脑上完成，不把文件交到云端。完整引擎只做桌面端；以后网页版会砍掉重功能，iOS 也会再单独做。
 
-当前版本 **0.1.0**。内部 npm 包名仍是 `mediaforge`，`appId` 是 `com.mediaforge.app`，预加载桥是 `window.mediaForge`。改产品名时不要随便改这些内部标识。
+当前版本 **0.1.1**。内部 npm 包名仍是 `mediaforge`，`appId` 是 `com.mediaforge.app`，预加载桥是 `window.mediaForge`。改产品名时不要随便改这些内部标识。
 
 > **不内置**网易云 NCM、QQ 音乐 mgg/mflac、酷狗 KGM 等加密音乐格式的解密。
 
@@ -37,7 +37,7 @@
 | Office / WPS | 本机 LibreOffice 无界面转换。doc / docx / odt / rtf、xls / xlsx / et、ppt / pptx / dps 等，可转到 PDF、DOCX 等。 |
 | PDF | 转 PNG / JPG（Poppler）、WebP（Poppler + Sharp）、TXT（文本层）。转到 DOCX / HTML / XLSX 等走 LibreOffice。合并、按页拆分用 pdf-lib。AES-256 加密 / 解密用 qpdf。多个加密 PDF 可勾选「其他加密 PDF 都使用此密码」。扫描件可走 OCR。 |
 | 图片 | Sharp 互转 jpg / png / webp / gif / tiff / avif。HEIC/HEIF 优先 Sharp，失败再 FFmpeg。BMP / ICO / TGA / 视频静帧走 FFmpeg（ICO 限制单尺寸 256×256）。多图可合成 PDF。图片也可 OCR 成 TXT / MD / DOCX。RAW（含 CR3，优先 LibRaw `dcraw_emu`）、PSD、AI、JP2、JXL、QOI 有对应路径或明确报错，不会假装成功。 |
-| 电子书 | Pandoc：txt / md / html ↔ epub，以及 epub → txt / md / html。有 LibreOffice 时还可转到 PDF / DOCX。MOBI 可走内置解包；AZW3 建议安装 Calibre（`ebook-convert`）。 |
+| 电子书 | Pandoc：txt / md / html ↔ epub，以及 epub → txt / md / html。有 LibreOffice 时还可转到 PDF / DOCX。MOBI 可走内置解包；AZW3 以及更好的 MOBI 转换走 Calibre（`ebook-convert`，Windows 安装包已内置）。 |
 | 字幕 | 字幕格式转换（见 `electron/engines/subtitle.ts`）。 |
 | 压缩包 | ZIP 等归档转换（见 `electron/engines/archive.ts`）。 |
 
@@ -72,7 +72,7 @@
 
 Windows 安装包发布在 [GitHub Releases](https://github.com/chentaiyang/FoxForge/releases)。下载 `FoxForge-*-Setup.exe` 后按向导安装（可改安装目录，也可选择仅为当前用户或为所有用户安装）。
 
-当前安装包**尚未内置** FFmpeg、LibreOffice、Poppler 等引擎，需要本机自行安装这些工具，并保证在 PATH 里能找到。安装包也尚未做代码签名，Windows 可能弹出 SmartScreen 提示，选择「仍要运行」即可。
+从 v0.1.1 起，Windows 安装包**已内置全部转换引擎**（FFmpeg、LibreOffice、Poppler、qpdf、Tesseract、Pandoc、LibRaw、Calibre、Demucs / UVR 等），安装后即可使用，不必再单独安装这些工具。系统 PATH 里已有的同名工具仅作为后备。开发时从源码运行，仍可用系统已装的工具，或自行放到 `resources/` 对应目录。安装包尚未做代码签名，Windows 可能弹出 SmartScreen 提示，选择「仍要运行」即可。
 
 ### 开发时直接跑
 
@@ -92,7 +92,7 @@ npm install-scripts approve sharp
 npm rebuild sharp
 ```
 
-第一次使用前，建议按「环境要求」把 FFmpeg、LibreOffice、Poppler、qpdf、Tesseract、Pandoc 等装好，并在设置页看引擎是否就绪。
+若使用 Windows 安装包，引擎已随包装好，打开后可在设置页确认是否就绪。若从源码开发，请按「环境要求」安装或下载这些工具。
 
 ### 转换文件
 
@@ -231,19 +231,19 @@ npm run smoke:image  # 以及你改到的那一类 smoke
 
 | 工具 | 用途 | 常见安装方式 |
 |------|------|----------------|
-| FFmpeg + ffprobe | 音视频、部分图片 | 系统包，或放到 `resources/bin` |
-| LibreOffice（`soffice`） | Office / 部分电子书出 PDF、DOCX | 系统安装；体积大，打包时优先依赖系统已装 |
-| Poppler（`pdftoppm`、`pdftotext`） | PDF 栅格化和文本提取 | Linux：`sudo apt install poppler-utils` |
-| qpdf | PDF 加密解密 | Linux：`sudo apt install qpdf` 或 `node scripts/ensure-pdf-tools.mjs --install-qpdf` |
-| Sharp | 图片 | `npm install`（需允许原生脚本） |
-| Tesseract + `chi_sim` + `eng` | OCR | 见 `node scripts/ensure-tesseract.mjs`；Windows 可用 UB Mannheim 安装包 |
-| Pandoc | 电子书 | `node scripts/ensure-pandoc.mjs --install` |
-| LibRaw（`dcraw_emu`） | CR3 等新 RAW | `node scripts/ensure-image-extras.mjs --install` |
-| Demucs（可选） | 人声分离 | `node scripts/ensure-demucs.mjs --install` |
-| UVR 模型（可选） | MDX-Net 分离 | `node scripts/ensure-uvr.mjs` |
-| Calibre（可选） | AZW3 / 更好的 MOBI | `node scripts/ensure-calibre.mjs --install` |
+| FFmpeg + ffprobe | 音视频、部分图片 | Windows 安装包已内置；开发时可放到 `resources/bin` 或用系统包 |
+| LibreOffice（`soffice`） | Office / 部分电子书出 PDF、DOCX | Windows 安装包已内置到 `resources/LibreOffice`；Linux 可系统安装 |
+| Poppler（`pdftoppm`、`pdftotext`） | PDF 栅格化和文本提取 | Windows 安装包已内置；Linux：`sudo apt install poppler-utils` |
+| qpdf | PDF 加密解密 | Windows 安装包已内置；Linux：`sudo apt install qpdf` 或 `node scripts/ensure-pdf-tools.mjs --install-qpdf` |
+| Sharp | 图片 | `npm install`（需允许原生脚本）；安装包会解出 asar 中的原生模块 |
+| Tesseract + `chi_sim` + `eng` | OCR | Windows 安装包已内置语言包；开发见 `node scripts/ensure-tesseract.mjs` |
+| Pandoc | 电子书 | Windows 安装包已内置；开发可用 `node scripts/ensure-pandoc.mjs --install` |
+| LibRaw（`dcraw_emu`） | CR3 等新 RAW | Windows 安装包已内置；开发可用 `node scripts/ensure-image-extras.mjs --install` |
+| Demucs | 人声分离 | Windows 安装包已内置 CPU 环境；开发可用 `node scripts/ensure-demucs.mjs --install` |
+| UVR 模型 | MDX-Net 分离 | Windows 安装包已内置默认 ONNX 模型；开发可用 `node scripts/ensure-uvr.mjs` |
+| Calibre | AZW3 / 更好的 MOBI | Windows 安装包已内置；开发可用 `node scripts/ensure-calibre.mjs --install` |
 
-正式 Windows 安装包计划把 FFmpeg、Poppler、qpdf、Tesseract、Pandoc 等放进 `resources/bin`（electron-builder `extraResources`）。LibreOffice 太大，优先用系统安装。Sharp 随 Node 依赖分发，注意 asar 解包。
+Windows 安装包由 `scripts/ensure-windows-engines.mjs` 在 CI 里下载官方或常用的 x64 构建，再经 electron-builder `extraResources` 放进安装包（引擎在 asar 之外）。这些大二进制不进 git。Sharp 随 Node 依赖分发，打包时会 asarUnpack 原生模块。系统 PATH 中的同名工具仅作为后备。
 
 ---
 
@@ -253,7 +253,8 @@ npm run smoke:image  # 以及你改到的那一类 smoke
 npm run dev
 npm run typecheck
 npm run build
-npm run dist:win          # 打 Windows NSIS 安装包（在 Windows 或对应构建环境上）
+npm run dist:win          # 打 Windows NSIS 安装包（在 Windows 上；发布前先跑 ensure:windows-engines）
+node scripts/ensure-windows-engines.mjs --install  # 下载并布置全部 Windows 引擎
 
 # 探测 / 安装引擎
 node scripts/ensure-libreoffice.mjs [--install]
@@ -328,7 +329,7 @@ MEDIAFORGE_SMOKE_DEMUCS=1 npm run smoke:vocal   # 真跑 Demucs，会下载权�
 └── vite.config.ts
 ```
 
-`.gitignore` 会排除 `node_modules`、构建产物、Demucs 虚拟环境、UVR 模型、本地 FFmpeg / Pandoc 等大二进制。克隆下来后要用 `ensure-*` 脚本或系统包把引擎补齐。
+`.gitignore` 会排除 `node_modules`、构建产物，以及 LibreOffice、Calibre、便携 Python、UVR 模型、本地 FFmpeg / Pandoc 等大二进制。克隆源码后，Linux / macOS 开发机用 `ensure-*` 脚本或系统包补齐引擎；打 Windows 安装包时由 `ensure-windows-engines.mjs` 在 CI 下载，不必提交这些文件。
 
 ---
 
@@ -363,7 +364,7 @@ npm run dist:win
 
 - 人声页导入后的专业波形与排版
 - 完善 RAW / CR3 的安装与冒烟脚本
-- Windows 安装包内置常用引擎（FFmpeg、Poppler、qpdf、Tesseract、Pandoc 等）
+- 已完成：Windows 安装包内置全部转换引擎（见 v0.1.1）
 - 可选的 UVR VR 架构、Demucs GPU / DirectML 探测
 - 轻量网页版（砍掉重引擎）与 iOS 版
 

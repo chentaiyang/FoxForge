@@ -9,6 +9,7 @@ import { app } from 'electron'
 import { resolveFfmpeg } from './ffmpeg'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { cancelledResult, checkDiskSpace, estimateOutputBytes, failResult, isCancelRequested, preflightOutput, remapIfCancelled, spawnTracked, decorateProgress } from './jobs'
+import { envWithExeDir } from './bins'
 
 export type VocalBackend = 'demucs' | 'ffmpeg-simple' | 'uvr'
 
@@ -146,6 +147,13 @@ function candidatePythonBins(): string[] {
 
   for (const root of roots) {
     bins.push(
+      // 安装包内的便携 Python（resources/vocal-python），不要依赖 CI 上写死的 venv 绝对路径
+      path.join(root, 'vocal-python', 'python.exe'),
+      path.join(root, 'vocal-python', 'python'),
+      path.join(root, 'vocal-python', 'Scripts', 'python.exe'),
+      path.join(root, 'resources', 'vocal-python', 'python.exe'),
+      path.join(root, 'resources', 'vocal-python', 'python'),
+      path.join(root, 'resources', 'vocal-python', 'Scripts', 'python.exe'),
       path.join(root, '.venv-demucs', 'bin', 'python'),
       path.join(root, '.venv-demucs', 'bin', 'python3'),
       path.join(root, '.venv-demucs', 'Scripts', 'python.exe'),
@@ -196,7 +204,7 @@ function runCapture(
   return new Promise((resolve) => {
     const child = spawnTracked(bin, args, {
       windowsHide: true,
-      env: env ? { ...process.env, ...env } : process.env,
+      env: envWithExeDir(bin, env ? { ...process.env, ...env } : process.env),
     })
     let stdout = ''
     let stderr = ''
@@ -420,7 +428,7 @@ async function separateWithDemucs(
   return await new Promise<SeparateVocalsResult>((resolve) => {
     const child = spawnTracked(bin, args, {
       windowsHide: true,
-      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      env: envWithExeDir(bin, { ...process.env, PYTHONUNBUFFERED: '1' }),
     })
     let stderrBuf = ''
     let lastPct = 2
@@ -637,7 +645,7 @@ async function separateWithUvr(
     const child = spawnTracked(
       py,
       [runner, inputPath, '--output-dir', outRoot, '--model-dir', model.modelDir, '--model', model.model],
-      { windowsHide: true, env: { ...process.env, PYTHONUNBUFFERED: '1' } },
+      { windowsHide: true, env: envWithExeDir(py, { ...process.env, PYTHONUNBUFFERED: '1' }) },
     )
     let buf = ''
     const handle = (chunk: Buffer) => {

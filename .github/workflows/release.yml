@@ -1,5 +1,5 @@
 # 在 Windows 上打包 NSIS 安装包，并发布到 GitHub Releases。
-# 推送 v 开头的标签（例如 v0.1.0）即会触发；也可在 Actions 里手动运行。
+# 推送 v 开头的标签（例如 v0.1.1）即会触发；也可在 Actions 里手动运行。
 name: Release
 
 on:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '要发布的版本标签，例如 v0.1.0；留空则仅构建不发版'
+        description: '要发布的版本标签，例如 v0.1.1；留空则仅构建不发版'
         required: false
         default: ''
 
@@ -19,6 +19,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,9 +33,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Ensure optional resource directories
+      - name: Ensure resource directories
         shell: bash
-        run: mkdir -p resources/uvr-models
+        run: mkdir -p resources/bin resources/LibreOffice resources/calibre resources/vocal-python resources/tessdata resources/uvr-models .cache/windows-engines
+
+      - name: Cache Windows engine archives
+        uses: actions/cache@v4
+        with:
+          path: .cache/windows-engines
+          key: win-engines-v1-${{ hashFiles('scripts/ensure-windows-engines.mjs') }}
+          restore-keys: |
+            win-engines-v1-
+
+      - name: Bundle conversion engines
+        shell: bash
+        env:
+          FOXFORGE_ENGINE_CACHE: ${{ github.workspace }}/.cache/windows-engines
+        run: node scripts/ensure-windows-engines.mjs --install
 
       - name: Build Windows NSIS installer
         env:
@@ -58,7 +73,8 @@ jobs:
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           name: 灵狐工坊 ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: release-notes/${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}.md
           files: |
             release/*-Setup.exe
             release/*-Setup.exe.blockmap

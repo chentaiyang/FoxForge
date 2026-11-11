@@ -56,7 +56,7 @@ export interface VocalProbe {
 /** 暴露给渲染进程的 MediaForgeAPI，IPC 通道名与方法一一对应。 */
 const mediaForge = {
   platform: process.platform,
-  version: '0.1.0',
+  version: '0.1.1',
 
   getPathForFile(file: File): string {
     try {

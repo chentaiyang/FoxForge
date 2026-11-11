@@ -12,7 +12,7 @@ export default function TitleBar() {
         <img className="brand-mark" src="/mascot-bust.png" alt="灵灵" />
         <div>
           <div className="brand-name">灵狐工坊</div>
-          <div className="brand-sub">FoxForge · v0.1.0</div>
+          <div className="brand-sub">FoxForge · v0.1.1</div>
         </div>
       </div>
       <div className="title-bar-actions">

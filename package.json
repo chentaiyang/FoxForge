@@ -1,7 +1,7 @@
 {
   "name": "mediaforge",
   "productName": "灵狐工坊",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "灵狐工坊 / FoxForge — Windows 全能格式转换客户端：Office / PDF / 音视频 / 人声分离",
   "main": "dist-electron/main.js",
   "author": "FoxForge",
@@ -32,7 +32,8 @@
     "smoke:archive": "node scripts/smoke-archive.mjs",
     "smoke:subtitle": "node scripts/smoke-subtitle.mjs",
     "ensure:calibre": "node scripts/ensure-calibre.mjs",
-    "ensure:uvr": "node scripts/ensure-uvr.mjs"
+    "ensure:uvr": "node scripts/ensure-uvr.mjs",
+    "ensure:windows-engines": "node scripts/ensure-windows-engines.mjs --install"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
@@ -85,6 +86,34 @@
         ]
       },
       {
+        "from": "resources/LibreOffice",
+        "to": "LibreOffice",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/calibre",
+        "to": "calibre",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/vocal-python",
+        "to": "vocal-python",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/tessdata",
+        "to": "tessdata",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "resources/uvr-models",
         "to": "uvr-models",
         "filter": [
@@ -95,6 +124,10 @@
         "from": "scripts/uvr-separate.py",
         "to": "uvr-separate.py"
       }
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**"
     ]
   },
   "allowScripts": {

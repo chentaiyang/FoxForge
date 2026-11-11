@@ -48,3 +48,14 @@ resources/calibre/
 .tmp-engine/
 
 resources/uvr-models/
+
+# Windows 随包引擎（由 scripts/ensure-windows-engines.mjs 下载，不要提交）
+resources/LibreOffice/
+resources/vocal-python/
+resources/tessdata/
+resources/bin/poppler/
+resources/bin/tesseract/
+resources/bin/ffmpeg.exe
+resources/bin/ffprobe.exe
+resources/bin/dcraw_emu.exe
+.cache/

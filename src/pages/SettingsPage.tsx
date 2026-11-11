@@ -199,7 +199,7 @@ export default function SettingsPage() {
             <img className="about-mascot" src="/mascot-bust.png" alt="灵灵" />
             <div className="about-card-copy">
               <strong>灵狐工坊 FoxForge</strong>
-              <p>版本 0.1.0 · Electron + React + TypeScript</p>
+              <p>版本 0.1.1 · Electron + React + TypeScript</p>
               <p className="muted">吉祥物灵灵。完整转换在本地完成；网页版以后只保留轻功能。</p>
             </div>
             <button type="button" className="btn ghost" onClick={applyReset}>

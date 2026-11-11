@@ -10,6 +10,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { cancelledResult, failResult, isCancelRequested, preflightOutput, remapIfCancelled, spawnTracked, limitOffice, decorateProgress } from './jobs'
+import { envWithExeDir } from './bins'
 
 export interface ConvertDocumentRequest {
   inputPath: string
@@ -68,17 +69,26 @@ const DOC_GROUPS = new Set(['document', 'spreadsheet', 'presentation'])
 
 function candidateBinDirs(): string[] {
   const dirs: string[] = []
+  // 随包 LibreOffice 在 resources/LibreOffice/program/soffice.exe，不能只搜 bin/
+  const programSubs = [
+    path.join('LibreOffice', 'program'),
+    path.join('libreoffice', 'program'),
+    'LibreOffice',
+    'libreoffice',
+  ]
   try {
     if (app.isPackaged) {
       dirs.push(path.join(process.resourcesPath, 'bin'))
-      dirs.push(path.join(process.resourcesPath, 'libreoffice'))
+      for (const sub of programSubs) dirs.push(path.join(process.resourcesPath, sub))
       dirs.push(path.join(path.dirname(process.execPath), 'resources', 'bin'))
+      dirs.push(path.join(path.dirname(process.execPath), 'resources', 'LibreOffice', 'program'))
     }
   } catch {
     /* 冒烟脚本在 Electron 外运行时没有 app */
   }
   dirs.push(path.join(process.cwd(), 'bin'))
   dirs.push(path.join(process.cwd(), 'resources', 'bin'))
+  for (const sub of programSubs) dirs.push(path.join(process.cwd(), 'resources', sub))
   return dirs
 }
 
@@ -130,7 +140,7 @@ function runCapture(
   timeoutMs = 20000,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawnTracked(bin, args, { windowsHide: true })
+    const child = spawnTracked(bin, args, { windowsHide: true, env: envWithExeDir(bin) })
     let stdout = ''
     let stderr = ''
     const timer = setTimeout(() => {
@@ -323,7 +333,7 @@ async function convertDocumentUnlocked(
   onProgress({ jobId, percent: 15, message: `convert-to ${filter}` })
 
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
-    const child = spawnTracked(soffice, args, { windowsHide: true, env: { ...process.env } })
+    const child = spawnTracked(soffice, args, { windowsHide: true, env: envWithExeDir(soffice) })
     let stdout = ''
     let stderr = ''
     // 冷启动时文档转换可能较慢

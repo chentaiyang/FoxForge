@@ -21,18 +21,38 @@ function requireElectron(): { app?: { isPackaged?: boolean } } | null {
     return null
   }
 }
+/**
+ * 安装包里引擎的常见子目录。LibreOffice / Poppler / qpdf / Calibre 不会全部平铺在 bin/，
+ * 避免不同工具包的 DLL 重名互相覆盖。
+ */
+export const PACKAGED_ENGINE_SUBDIRS = [
+  path.join('bin', 'poppler'),
+  path.join('bin', 'poppler', 'bin'),
+  path.join('bin', 'poppler', 'Library', 'bin'),
+  path.join('bin', 'qpdf-toolkit', 'bin'),
+  path.join('bin', 'qpdf-toolkit'),
+  path.join('bin', 'tesseract'),
+  path.join('LibreOffice', 'program'),
+  path.join('libreoffice', 'program'),
+  'calibre',
+  path.join('calibre', 'bin'),
+  path.join('calibre', 'Calibre'),
+  path.join('Calibre Portable', 'Calibre'),
+]
+
 /** 按打包/开发环境列出可能存放外部工具的目录。 */
 export function candidateBinDirs(extraSubdirs: string[] = []): string[] {
   const dirs: string[] = []
   const push = (p: string) => {
     if (p && !dirs.includes(p)) dirs.push(p)
   }
+  const subs = [...PACKAGED_ENGINE_SUBDIRS, ...extraSubdirs]
   try {
     // 延迟加载 electron，方便冒烟脚本在非 Electron 环境里 import 引擎
     const el = requireElectron()
     if (el?.app?.isPackaged) {
       push(path.join(process.resourcesPath, 'bin'))
-      for (const sub of extraSubdirs) push(path.join(process.resourcesPath, sub))
+      for (const sub of subs) push(path.join(process.resourcesPath, sub))
       push(path.join(path.dirname(process.execPath), 'resources', 'bin'))
     }
   } catch {
@@ -40,11 +60,27 @@ export function candidateBinDirs(extraSubdirs: string[] = []): string[] {
   }
   push(path.join(process.cwd(), 'bin'))
   push(path.join(process.cwd(), 'resources', 'bin'))
-  for (const sub of extraSubdirs) {
+  for (const sub of subs) {
     push(path.join(process.cwd(), 'resources', sub))
     push(path.join(process.cwd(), sub))
   }
   return dirs
+}
+
+/**
+ * 给 Windows 子进程把 exe 所在目录放到 PATH 最前面，以便加载同目录 DLL。
+ * 非 Windows 则同时补上 LD_LIBRARY_PATH / DYLD_LIBRARY_PATH。
+ */
+export function envWithExeDir(bin: string, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const env = { ...base }
+  const dir = path.dirname(bin)
+  if (!dir || dir === '.' ) return env
+  env.PATH = dir + path.delimiter + (env.PATH || '')
+  if (process.platform !== 'win32') {
+    const key = process.platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH'
+    env[key] = env[key] ? `${dir}${path.delimiter}${env[key]}` : dir
+  }
+  return env
 }
 
 /** 在 PATH 里查找可执行文件；已是绝对路径则只检查是否存在。 */
@@ -110,7 +146,7 @@ export function runCapture(
     const child = spawnTracked(bin, args, {
       windowsHide: true,
       cwd: opts?.cwd,
-      env: opts?.env ? { ...process.env, ...opts.env } : process.env,
+      env: envWithExeDir(bin, opts?.env ? { ...process.env, ...opts.env } : process.env),
     })
     let stdout = ''
     let stderr = ''

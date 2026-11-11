@@ -8,7 +8,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import { convertDocument, resolveLibreOffice } from './libreoffice'
 import { unpackMobiToHtml } from './mobi'
-import { findBinary as findBinShared, tmpPath, rmQuiet, unlinkQuiet } from './bins'
+import { findBinary as findBinShared, tmpPath, rmQuiet, unlinkQuiet, envWithExeDir } from './bins'
 import type { ConvertProgressEvent, ConvertResult, EngineHealthItem } from './types'
 import { cancelledResult, failResult, isCancelRequested, preflightOutput, remapIfCancelled, spawnTracked, decorateProgress } from './jobs'
 
@@ -100,7 +100,7 @@ function runCapture(
   timeoutMs = 60000,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const child = spawnTracked(bin, args, { windowsHide: true })
+    const child = spawnTracked(bin, args, { windowsHide: true, env: envWithExeDir(bin) })
     let stdout = ''
     let stderr = ''
     const timer = setTimeout(() => {
