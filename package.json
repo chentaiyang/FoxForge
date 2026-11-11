@@ -1,0 +1,103 @@
+{
+  "name": "mediaforge",
+  "productName": "灵狐工坊",
+  "version": "0.1.0",
+  "description": "灵狐工坊 / FoxForge — Windows 全能格式转换客户端：Office / PDF / 音视频 / 人声分离",
+  "main": "dist-electron/main.js",
+  "author": "FoxForge",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "smoke:ffmpeg": "node scripts/smoke-ffmpeg.mjs",
+    "smoke:libreoffice": "node scripts/smoke-libreoffice.mjs",
+    "ensure:libreoffice": "node scripts/ensure-libreoffice.mjs",
+    "smoke:pdf": "node scripts/smoke-pdf.mjs",
+    "ensure:pdf": "node scripts/ensure-pdf-tools.mjs",
+    "smoke:image": "node scripts/smoke-image.mjs",
+    "smoke:ocr": "node scripts/smoke-ocr.mjs",
+    "ensure:tesseract": "node scripts/ensure-tesseract.mjs",
+    "smoke:vocal": "node scripts/smoke-vocal.mjs",
+    "ensure:demucs": "node scripts/ensure-demucs.mjs",
+    "smoke:ebook": "node scripts/smoke-ebook.mjs",
+    "ensure:pandoc": "node scripts/ensure-pandoc.mjs",
+    "ensure:image-extras": "node scripts/ensure-image-extras.mjs",
+    "smoke:image-extras": "node scripts/smoke-image-extras.mjs",
+    "smoke:archive": "node scripts/smoke-archive.mjs",
+    "smoke:subtitle": "node scripts/smoke-subtitle.mjs",
+    "ensure:calibre": "node scripts/ensure-calibre.mjs",
+    "ensure:uvr": "node scripts/ensure-uvr.mjs"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "build": {
+    "appId": "com.mediaforge.app",
+    "productName": "灵狐工坊",
+    "icon": "build/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/uvr-models",
+        "to": "uvr-models",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "scripts/uvr-separate.py",
+        "to": "uvr-separate.py"
+      }
+    ]
+  },
+  "allowScripts": {
+    "electron@33.4.11": true,
+    "esbuild@0.21.5": true,
+    "sharp@0.33.5": true
+  }
+}

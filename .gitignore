@@ -1,0 +1,50 @@
+node_modules
+dist
+dist-electron
+release
+.DS_Store
+*.log
+.env
+.env.*
+
+# local engine binaries (keep resources/bin/README.md)
+resources/bin/ffmpeg
+resources/bin/ffmpeg.exe
+resources/bin/ffprobe
+resources/bin/ffprobe.exe
+resources/bin/*.dll
+
+# generated test media
+test-fixtures/*.wav
+test-fixtures/*.mp3
+test-fixtures/*.flac
+test-fixtures/*.m4a
+test-fixtures/*.ogg
+
+# qpdf portable toolkit (download via scripts/ensure-pdf-tools.mjs)
+resources/bin/qpdf-toolkit/
+
+# demucs local venv + model caches / smoke outs
+.venv-demucs/
+venv/
+test-fixtures/vocal-smoke-out/
+test-fixtures/*_separated/
+
+# pandoc portable binary (ensure-pandoc.mjs --install)
+resources/bin/pandoc
+resources/bin/pandoc.exe
+
+# image extras / calibre / raw tools
+resources/bin/dcraw
+resources/bin/dcraw.exe
+resources/bin/dcraw_emu
+resources/bin/djxl
+resources/bin/cjxl
+resources/bin/opj_decompress
+resources/bin/opj_compress
+resources/bin/qoiconv
+resources/calibre/
+
+.tmp-engine/
+
+resources/uvr-models/
