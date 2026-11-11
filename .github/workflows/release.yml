@@ -32,6 +32,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Ensure optional resource directories
+        shell: bash
+        run: mkdir -p resources/uvr-models
+
       - name: Build Windows NSIS installer
         env:
           # 当前没有代码签名证书，跳过自动发现，避免打包失败

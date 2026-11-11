@@ -79,7 +79,9 @@
         "from": "resources/bin",
         "to": "bin",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/*.so",
+          "!**/*.so.*"
         ]
       },
       {
