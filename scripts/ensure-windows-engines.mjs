@@ -469,7 +469,7 @@ async function installTesseract() {
   const exe = path.join(tesseractDir, 'tesseract.exe')
   mkdir(tessdataDir)
   const hasLangs = existsFile(path.join(tessdataDir, 'chi_sim.traineddata')) && existsFile(path.join(tessdataDir, 'eng.traineddata'))
-  if (existsFile(exe) && hasLangs && already(exe, ['--list-langs'], (_r, t) => t.includes('chi_sim') && /\beng\b/.test(t), { TESSDATA_PREFIX: tessdataDir.endsWith('tessdata') ? path.dirname(tessdataDir) : tessdataDir })) {
+  if (existsFile(exe) && hasLangs && already(exe, ['--tessdata-dir', tessdataDir, '--list-langs'], (_r, t) => /chi_sim/.test(t) && /(^|[\/\s])eng(\s|$)/m.test(t), { TESSDATA_PREFIX: tessdataDir })) {
     log('OK tesseract already present')
     return
   }
@@ -787,11 +787,16 @@ function verifyAll() {
   check('qpdf', qpdf, ['--version'], { test: (_r, t) => /qpdf/i.test(t) })
   check('pandoc', pandoc, ['--version'], { test: (_r, t) => /pandoc/i.test(t) })
   check('dcraw_emu', dcraw, [], { test: (r) => r.error?.code !== 'ENOENT' })
-  check('tesseract', tesseract, ['--list-langs'], {
-    env: { TESSDATA_PREFIX: path.dirname(tessdataDir) },
-    test: (_r, t) => t.includes('chi_sim') && /(^|\s)eng(\s|$)/m.test(t),
+  check('tesseract', tesseract, ['--tessdata-dir', tessdataDir, '--list-langs'], {
+    env: { TESSDATA_PREFIX: tessdataDir },
+    test: (_r, t) => /chi_sim/.test(t) && /(^|[\/\s])eng(\s|$)/m.test(t),
   })
-  check('soffice', soffice, ['--headless', '--version'], { test: (r, t) => r.error?.code !== 'ENOENT' && (t.length > 0 || (r.status ?? 1) === 0) })
+  const sofficeCli = existsFile(path.join(loDir, 'program', 'soffice.com'))
+    ? path.join(loDir, 'program', 'soffice.com')
+    : soffice
+  check('soffice', sofficeCli, ['--version'], {
+    test: (r, t) => r.error?.code !== 'ENOENT' && (t.length > 0 || (r.status ?? 1) === 0),
+  })
   check('ebook-convert', calibre, ['--version'], { test: (_r, t) => /calibre|ebook-convert/i.test(t) })
   check('python-demucs-uvr', py, ['-c', 'import demucs, onnxruntime; print("ok")'], {
     test: (_r, t) => /\bok\b/.test(t),

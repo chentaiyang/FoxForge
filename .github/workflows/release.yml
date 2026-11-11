@@ -41,8 +41,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/windows-engines
-          key: win-engines-v1-${{ hashFiles('scripts/ensure-windows-engines.mjs') }}
+          key: win-engines-v2-${{ hashFiles('scripts/ensure-windows-engines.mjs') }}
           restore-keys: |
+            win-engines-v2-
             win-engines-v1-
 
       - name: Bundle conversion engines
@@ -50,6 +51,13 @@ jobs:
         env:
           FOXFORGE_ENGINE_CACHE: ${{ github.workspace }}/.cache/windows-engines
         run: node scripts/ensure-windows-engines.mjs --install
+
+      - name: Save engine download cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/windows-engines
+          key: win-engines-v2-${{ hashFiles('scripts/ensure-windows-engines.mjs') }}-${{ github.run_id }}
 
       - name: Build Windows NSIS installer
         env:

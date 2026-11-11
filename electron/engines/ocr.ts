@@ -60,13 +60,16 @@ function hasTrainedData(dir: string, lang = 'eng'): boolean {
 }
 
 /**
- * 定位随包 tessdata。TESSDATA_PREFIX 若指向名为 tessdata 的目录，Tesseract 会再找一层
- * tessdata/tessdata，所以此时应把前缀设成它的父目录；若 traineddata 直接放在该目录里则用自身。
+ * 定位含有 *.traineddata 的目录。较新的 Tesseract（含 UB Mannheim 5.4）把
+ * TESSDATA_PREFIX 当作语言包目录本身；若指到它的父目录，--list-langs 会列出
+ * tessdata/chi_sim 这种名字，-l chi_sim 就会失败。
  */
 function resolveTessdataPrefix(tesseractBin?: string | null): string | undefined {
   if (process.env.TESSDATA_PREFIX) {
     const given = process.env.TESSDATA_PREFIX
-    if (hasTrainedData(given) || hasTrainedData(path.join(given, 'tessdata'))) return given
+    if (hasTrainedData(given) || hasTrainedData(given, 'chi_sim')) return given
+    const nested = path.join(given, 'tessdata')
+    if (hasTrainedData(nested) || hasTrainedData(nested, 'chi_sim')) return nested
   }
   const dirs: string[] = []
   const push = (p: string) => {
@@ -92,16 +95,17 @@ function resolveTessdataPrefix(tesseractBin?: string | null): string | undefined
   push('/usr/share/tesseract-ocr/4.00/tessdata')
   push('/usr/share/tessdata')
   for (const dir of dirs) {
-    if (hasTrainedData(dir) || hasTrainedData(dir, 'chi_sim')) {
-      const base = path.basename(dir).toLowerCase()
-      return base === 'tessdata' ? path.dirname(dir) : dir
-    }
+    if (hasTrainedData(dir) || hasTrainedData(dir, 'chi_sim')) return dir
     const nested = path.join(dir, 'tessdata')
-    if (hasTrainedData(nested) || hasTrainedData(nested, 'chi_sim')) {
-      return dir
-    }
+    if (hasTrainedData(nested) || hasTrainedData(nested, 'chi_sim')) return nested
   }
   return undefined
+}
+
+/** 给识别 / --list-langs 加上 --tessdata-dir，避免只靠环境变量时各版本行为不一致。 */
+function tessArgs(tesseractBin: string, args: string[]): string[] {
+  const dir = resolveTessdataPrefix(tesseractBin)
+  return dir ? ['--tessdata-dir', dir, ...args] : args
 }
 
 function tessEnv(tesseractBin: string, extra?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -233,7 +237,7 @@ export async function resolveTesseract(): Promise<{
   const m = verText.match(/tesseract\s+(\S+)/i)
   const version = m?.[1]
 
-  const langR = await runCapture(tesseract, ['--list-langs'], 8000, env)
+  const langR = await runCapture(tesseract, tessArgs(tesseract, ['--list-langs']), 8000, env)
   const langText = `${langR.stdout}\n${langR.stderr}`
   const langs = langText
     .split(/\r?\n/)
@@ -302,7 +306,7 @@ async function ocrImageFile(
   lang: string,
 ): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   // 识别到 stdout：tesseract img stdout -l lang
-  const r = await runCapture(tesseract, [imagePath, 'stdout', '-l', lang, '--psm', '3'], 180_000, tessEnv(tesseract))
+  const r = await runCapture(tesseract, tessArgs(tesseract, [imagePath, 'stdout', '-l', lang, '--psm', '3']), 180_000, tessEnv(tesseract))
   if (r.code !== 0) {
     const err = (r.stderr || r.stdout).trim()
     if (/Error opening data file|Failed loading language|Could not initialize/i.test(err)) {

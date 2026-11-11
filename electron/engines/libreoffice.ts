@@ -211,7 +211,7 @@ export async function resolveLibreOffice(): Promise<{
   version?: string
 }> {
   // 优先 soffice，同时接受 libreoffice 包装以及 Windows 的 soffice.exe
-  const soffice = findBinary(['soffice', 'libreoffice'])
+  const soffice = findBinary(['soffice.com', 'soffice', 'libreoffice'])
   let version: string | undefined
   if (soffice) {
     const r = await runCapture(soffice, ['--version'])
