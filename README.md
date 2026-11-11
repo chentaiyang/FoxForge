@@ -68,6 +68,12 @@
 
 ## 如何使用
 
+### 安装包
+
+Windows 安装包发布在 [GitHub Releases](https://github.com/chentaiyang/FoxForge/releases)。下载 `灵狐工坊-*-Setup.exe` 后按向导安装（可改安装目录，也可选择仅为当前用户或为所有用户安装）。
+
+当前安装包**尚未内置** FFmpeg、LibreOffice、Poppler 等引擎，需要本机自行安装这些工具，并保证在 PATH 里能找到。安装包也尚未做代码签名，Windows 可能弹出 SmartScreen 提示，选择「仍要运行」即可。
+
 ### 开发时直接跑
 
 需要已安装 Node.js（推荐 20，系统里还要有一份真正的 Node，Sharp 不能走 Electron 自带的运行时，见下文）。
