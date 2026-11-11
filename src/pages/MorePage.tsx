@@ -8,7 +8,7 @@ export default function MorePage() {
     { title: '插件 / 模型市场', desc: '按需下载 FFmpeg 包、OCR 语言包、Demucs 权重' },
     { title: '历史记录', desc: '最近转换、一键打开输出文件夹' },
     { title: '网页版入口', desc: '轻量功能浏览器直开；重活走本机或云 Worker' },
-    { title: '诊断导出', desc: '引擎探测日志、一键打包反馈（对标飞鼠诊断）' },
+    { title: '诊断导出', desc: '引擎探测日志、一键打包反馈' },
     { title: 'Agent / CLI', desc: '命令行与外部 Agent 接入（后置优先级）' },
   ]
 
@@ -17,7 +17,7 @@ export default function MorePage() {
       <header className="page-header">
         <div>
           <h1>更多</h1>
-          <p>侧边栏扩展位。飞鼠是单页工作台；我们用多入口把能力摊开，方便以后加模块。</p>
+          <p>侧边栏扩展位。用多个入口把能力摊开，方便以后加模块。</p>
         </div>
       </header>
       <div className="category-grid">

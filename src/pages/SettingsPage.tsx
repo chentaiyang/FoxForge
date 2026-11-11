@@ -201,7 +201,6 @@ export default function SettingsPage() {
               <strong>灵狐工坊 FoxForge</strong>
               <p>版本 0.1.0 · Electron + React + TypeScript</p>
               <p className="muted">吉祥物灵灵。完整转换在本地完成；网页版以后只保留轻功能。</p>
-              <p className="muted">不使用飞鼠的鼠鼠 IP、品牌资源或专有文案。</p>
             </div>
             <button type="button" className="btn ghost" onClick={applyReset}>
               恢复默认设置
